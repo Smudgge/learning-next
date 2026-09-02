@@ -1,15 +1,16 @@
 import Link from "next/link"
 import { Button } from "./ui/button";
-import { HomeIcon, ShoppingBasket } from "lucide-react";
+import { HomeIcon, LayoutDashboard } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
+import LoginButton from "./LoginButton";
 
 function Navbar() {
 
   const links = {
     items: {
-      path: "/items",
-      name: "Items",
-      icon: <ShoppingBasket className="w-4 h-4" />,
+      path: "/dashboard",
+      name: "Dashboard",
+      icon: <LayoutDashboard className="w-4 h-4" />,
     },
     home: {
       path: "/",
@@ -36,13 +37,15 @@ function Navbar() {
         {/* Navigation Links */}
         <div className="hidden md:flex items-center space-x-4">
           {Object.values(links).map((link) => (
-            <Button key={link.name} variant="ghost" className="flex items-center gap-2" asChild>
+            <Button key={link.name} variant="ghost" className="flex items-center gap-2">
               <Link href={link.path} className="flex items-center gap-2">
                 {link.icon}
                 <span className="hidden lg:inline">{link.name}</span>
               </Link>
             </Button>
           ))}
+
+          <LoginButton />
 
           <ThemeToggle />
         </div>

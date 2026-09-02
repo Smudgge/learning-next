@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SessionProvider } from "next-auth/react"
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        <SessionProvider>
         <ThemeProvider 
           attribute="class" 
           defaultTheme="system" 
@@ -39,6 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Navbar />
           {children}
         </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   );
