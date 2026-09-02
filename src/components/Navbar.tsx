@@ -29,7 +29,7 @@ function Navbar() {
             href="/" 
             className="text-xl font-bold text-primary font-mono tracking-wider"
           >
-            🧺 Items
+            ✉️ Inventory
           </Link>
         </div>
 
@@ -37,7 +37,7 @@ function Navbar() {
         <div className="hidden md:flex items-center space-x-4">
           {Object.values(links).map((link) => (
             <Button key={link.name} variant="ghost" className="flex items-center gap-2" asChild>
-              <Link href={link.path}>
+              <Link href={link.path} className="flex items-center gap-2">
                 {link.icon}
                 <span className="hidden lg:inline">{link.name}</span>
               </Link>
