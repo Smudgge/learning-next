@@ -18,6 +18,7 @@ model User {
   email    String    @unique
   password String
   sessions Session[]
+  tasks    Task[]
 }
 
 model Session {
@@ -26,4 +27,36 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum TaskStatus {
+  TODO        @map("Todo")
+  IN_PROGRESS @map("In Progress")
+  DONE        @map("Done")
+}
+
+model Label {
+  id        String @id @default(cuid())
+  name      String @unique
+  taskLabel TaskLabel[]
+}
+
+model TaskLabel {
+  taskId  String
+  task    Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  labelId String
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+}
+
+model Task {
+  id         String      @id @default(cuid())
+  name       String
+  assignedId String?
+  assigned   User?       @relation(fields: [assignedId], references: [id], onDelete: Cascade)
+  status     TaskStatus  @default(TODO)
+  labels     TaskLabel[]
+  dueDate    DateTime?
+  created    DateTime    @default(now())
 }
