@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Circle, CircleCheck, Loader } from "lucide-react";
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -20,6 +20,8 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table"
+import TaskStatusComponent from "./TaskStatusComponent";
+import { TaskStatus } from "@/generated/prisma/client";
 
 const features = tableFeatures({
   columnFilteringFeature,  // Column filtering
@@ -45,6 +47,25 @@ const columns = columnHelper.columns([
   columnHelper.accessor("status", {
     header: "Status",
     enableHiding: false,
+    cell: ({ row }) => (
+      <Select
+        value={`${row.original.status}`}
+        onValueChange={(value) => {
+
+        }}
+      >
+        <SelectTrigger className="w-full border-0">
+          <TaskStatusComponent status={row.original.status}/>
+        </SelectTrigger>
+        <SelectContent side="top">
+          {["TODO", "IN_PROGRESS", "DONE"].map((status) => (
+            <SelectItem key={status} value={`${status}`}>
+              <TaskStatusComponent status={status as TaskStatus}/>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    ),
   }),
   columnHelper.accessor("labels", {
     header: "Labels",
