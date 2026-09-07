@@ -1,6 +1,6 @@
 A simple task organiser developed in NextJS, TypeScript, Prisma, PostgreSQL.
 
-![]()
+![](https://github.com/Smudgge/learning-next/blob/main/public/screenshots/dashboard.png?raw=true)
 
 
 ## Development
