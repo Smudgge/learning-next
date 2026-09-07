@@ -15,7 +15,7 @@ model User {
   email           String            @unique
   password        String
   sessions        Session[]
-  taskAssignments TaskAssignments[]
+  taskAssignments TaskAssignment[]
 }
 
 model Session {
@@ -47,7 +47,7 @@ model TaskLabel {
   @@id([taskId, labelId])
 }
 
-model TaskAssignments {
+model TaskAssignment {
   taskId String
   task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
   userId String
@@ -59,7 +59,7 @@ model TaskAssignments {
 model Task {
   id          String            @id @default(cuid())
   name        String
-  assignments TaskAssignments[]
+  assignments TaskAssignment[]
   status      TaskStatus        @default(TODO)
   labels      TaskLabel[]
   dueDate     DateTime?

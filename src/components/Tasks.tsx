@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Circle, CircleCheck, Loader } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "./ui/select";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Circle, CircleCheck, Divide, Loader, Search } from "lucide-react";
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -21,7 +21,10 @@ import {
   useTable,
 } from "@tanstack/react-table"
 import TaskStatusComponent from "./TaskStatusComponent";
-import { TaskStatus } from "@/generated/prisma/client";
+import { TaskStatus, User } from "@/generated/prisma/client";
+import TaskAssignmentComponent from "./TaskAssignmentComponent";
+import { Input } from "./ui/input";
+import { Separator } from "./ui/separator";
 
 const features = tableFeatures({
   columnFilteringFeature,  // Column filtering
@@ -39,10 +42,51 @@ const columns = columnHelper.columns([
   columnHelper.accessor("name", {
     header: "Name",
     enableHiding: false,
+    cell: ({ row }) => (
+      <Label className="px-2 py-3">{row.original.name}</Label>
+    )
   }),
-  columnHelper.accessor("assigned", {
+  columnHelper.accessor("assignments", {
     header: "Assignees",
     enableHiding: false,
+    cell: ({ row }) => {
+      const [users, setUsers] = useState<User[]>([]) // For finding user to assign.
+      return <Select
+        value={`${row.original.assignments}`}
+        onValueChange={(value) => {
+
+        }}
+      >
+        <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-0">
+          <TaskAssignmentComponent assignments={row.original.assignments}/>
+        </SelectTrigger>
+        <SelectContent side="top" className="w-52">
+          <div>
+            {/** Title */}
+            <Label className="p-3 font-bold">Add assignees</Label>
+            {/* Search bar */}
+            <div className="px-2 pb-3">
+              <Search className="pointer-events-none absolute left-[20px] top-[41px] translate-y-1 h-4 w-4 opacity-50" />
+              <Input
+                placeholder="Search"
+                className="border-0 pl-8 focus-visible:border-2 focus-visible:border-blue-400 shadow-none focus-visible:ring-0 h-8"
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </div>
+            <Separator />
+            {/** Users */}
+            <div className="pt-3 min-h-20">
+              {users.map((user) => (
+                <div></div>
+              ))}
+              {users.length == 0 &&
+                <Label className="px-3 pb-3 font-bold">No Matches</Label>
+              }
+            </div>
+          </div>
+        </SelectContent>
+      </Select>
+    }
   }),
   columnHelper.accessor("status", {
     header: "Status",
@@ -54,14 +98,16 @@ const columns = columnHelper.columns([
 
         }}
       >
-        <SelectTrigger className="w-full border-0">
+        <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-0">
           <TaskStatusComponent status={row.original.status}/>
         </SelectTrigger>
         <SelectContent side="top">
-          {["TODO", "IN_PROGRESS", "DONE"].map((status) => (
-            <SelectItem key={status} value={`${status}`}>
-              <TaskStatusComponent status={status as TaskStatus}/>
-            </SelectItem>
+          {["TODO", "IN_PROGRESS", "DONE"].map((status, index, arr) => (
+            <div key={status}>
+              <SelectItem value={`${status}`}>
+                <TaskStatusComponent status={status as TaskStatus} />
+              </SelectItem>
+            </div>
           ))}
         </SelectContent>
       </Select>
@@ -78,6 +124,9 @@ const columns = columnHelper.columns([
   columnHelper.accessor("created", {
     header: "Created",
     enableHiding: false,
+    cell: ({ row }) => (
+      <Label>{new Date(row.original.created).toLocaleString()}</Label>
+    )
   }),
 ])
 
@@ -127,7 +176,7 @@ export default function Tasks() {
             table.getRowModel().rows.map((row) => (
               <TableRow key={row.id}>
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className="p-0">
                     <FlexRender cell={cell}/>
                   </TableCell>
                 ))}
