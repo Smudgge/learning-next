@@ -10,12 +10,12 @@ datasource db {
 }
 
 model User {
-  id       String    @id @default(cuid())
-  name     String?
-  email    String    @unique
-  password String
-  sessions Session[]
-  tasks    Task[]
+  id              String            @id @default(cuid())
+  name            String?
+  email           String            @unique
+  password        String
+  sessions        Session[]
+  taskAssignments TaskAssignments[]
 }
 
 model Session {
@@ -33,8 +33,8 @@ enum TaskStatus {
 }
 
 model Label {
-  id        String @id @default(cuid())
-  name      String @unique
+  id        String      @id @default(cuid())
+  name      String      @unique
   taskLabel TaskLabel[]
 }
 
@@ -47,13 +47,21 @@ model TaskLabel {
   @@id([taskId, labelId])
 }
 
+model TaskAssignments {
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+}
+
 model Task {
-  id         String      @id @default(cuid())
-  name       String
-  assignedId String?
-  assigned   User?       @relation(fields: [assignedId], references: [id], onDelete: Cascade)
-  status     TaskStatus  @default(TODO)
-  labels     TaskLabel[]
-  dueDate    DateTime?
-  created    DateTime    @default(now())
+  id          String            @id @default(cuid())
+  name        String
+  assignments TaskAssignments[]
+  status      TaskStatus        @default(TODO)
+  labels      TaskLabel[]
+  dueDate     DateTime?
+  created     DateTime          @default(now())
 }

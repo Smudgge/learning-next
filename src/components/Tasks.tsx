@@ -41,7 +41,7 @@ const columns = columnHelper.columns([
     enableHiding: false,
   }),
   columnHelper.accessor("assigned", {
-    header: "Assigned",
+    header: "Assignees",
     enableHiding: false,
   }),
   columnHelper.accessor("status", {
