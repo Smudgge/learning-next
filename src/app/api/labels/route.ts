@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -24,14 +24,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const tasks = await prisma.task.findMany({
-    where: { name: { contains: result.data.name || '', mode: 'insensitive' }},
+  const users = await prisma.label.findMany({
+    where: { name: { contains: result.data.name || '', mode: 'insensitive', }},
+    select: { id: true, name: true },
     take: result.data.limit,
-    include: {
-      assignments: { include: { user: true } },
-      labels: { include: { label: true } }
-    }
   })
-  console.log(tasks)
-  return NextResponse.json(tasks)
+  return NextResponse.json(users)
 }

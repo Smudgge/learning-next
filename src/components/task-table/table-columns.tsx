@@ -3,7 +3,7 @@ import { features } from "./table-features";
 import { TaskExpandedJSON } from "@/lib/types";
 import { Label } from "../ui/label";
 import { useEffect, useState } from "react";
-import { TaskStatus, User } from "@/generated/prisma/client";
+import { Label as LabelFromPrisma, TaskStatus, User } from "@/generated/prisma/client";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import TaskAssignmentComponent from "./assignment";
 import { Search } from "lucide-react";
@@ -13,6 +13,8 @@ import { Toggle } from "../ui/toggle";
 import { Checkbox } from "../ui/checkbox";
 import { Avatar, AvatarImage } from "../ui/avatar";
 import TaskStatusComponent from "./status";
+import TaskLabelComponent from "./label";
+import { format } from "date-fns";
 
 const columnHelper = createColumnHelper<typeof features, TaskExpandedJSON>()
 
@@ -21,7 +23,7 @@ export const columns = columnHelper.columns([
     header: "Name",
     enableHiding: false,
     cell: ({ row }) => (
-      <Label className="px-2 py-3">{row.original.name}</Label>
+      <Label className="px-2 py-3 truncate">{row.original.name}</Label>
     )
   }),
   columnHelper.accessor("assignments", {
@@ -56,7 +58,7 @@ export const columns = columnHelper.columns([
         <SelectContent side="top" className="w-52">
           <div>
             {/** Title */}
-            <Label className="p-3 font-bold">Add assignees</Label>
+            <Label className="p-3 font-bold">Select assignees</Label>
             {/* Search bar */}
             <div className="px-2 pb-3">
               <Search className="pointer-events-none absolute left-[20px] top-[41px] translate-y-1 h-4 w-4 opacity-50" />
@@ -108,13 +110,21 @@ export const columns = columnHelper.columns([
           <TaskStatusComponent status={row.original.status}/>
         </SelectTrigger>
         <SelectContent side="top">
-          {["TODO", "IN_PROGRESS", "DONE"].map((status, index, arr) => (
-            <div key={status}>
-              <SelectItem value={`${status}`}>
-                <TaskStatusComponent status={status as TaskStatus} />
-              </SelectItem>
+          <div>
+            {/** Title */}
+            <Label className="p-3 font-bold">Set status</Label>
+            <Separator />
+            {/** Status's */}
+            <div className="p-3 min-h-20">
+              {["TODO", "IN_PROGRESS", "DONE"].map((status, index, arr) => (
+                <div key={status}>
+                  <SelectItem value={`${status}`}>
+                    <TaskStatusComponent status={status as TaskStatus} />
+                  </SelectItem>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </SelectContent>
       </Select>
     ),
@@ -122,16 +132,84 @@ export const columns = columnHelper.columns([
   columnHelper.accessor("labels", {
     header: "Labels",
     enableHiding: false,
+    cell: ({ row }) => {
+      const [search, setSearch] = useState<string>()
+      const [labels, setLabels] = useState<LabelFromPrisma[]>([])
+
+      useEffect(() => {
+        const params = new URLSearchParams()
+        params.set("limit", '5')
+        if (search) params.set("name", search)
+
+        fetch(`/api/labels?${params.toString()}`)
+          .then((res) => res.json())
+          .then((data) => setLabels(data))
+          .catch(() => {
+            setLabels([])
+          })
+      }, [search])
+
+      return <Select
+        value={`${row.original.labels}`}
+        onValueChange={(value) => {
+
+        }}
+      >
+        <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-0">
+          {row.original.labels.map((taskLabel) => (
+            <TaskLabelComponent key={taskLabel.labelId} label={taskLabel.label} />
+          ))}
+        </SelectTrigger>
+        <SelectContent side="top" className="w-52">
+          <div>
+            {/** Title */}
+            <Label className="p-3 font-bold">Select labels</Label>
+            {/* Search bar */}
+            <div className="px-2 pb-3">
+              <Search className="pointer-events-none absolute left-[20px] top-[41px] translate-y-1 h-4 w-4 opacity-50" />
+              <Input
+                placeholder="Search"
+                className="border-2 pl-8 border-muted focus-visible:border-blue-400 shadow-none focus-visible:ring-0 h-8"
+                onKeyDown={(e) => e.stopPropagation()}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Separator />
+            {/** Labels */}
+            <div className="p-3 min-h-20">
+              {labels.map((label) => (
+                <Toggle className="w-full flex items-center justify-start gap-2">
+                  <Checkbox id={label.name || ''}/>
+                  <Label className="flex-1" htmlFor={label.name || ''}>
+                    <TaskLabelComponent label={label} />
+                  </Label>
+                </Toggle>
+              ))}
+              {labels.length == 0 &&
+                <Label className="px-3 pb-3 font-bold">No Matches</Label>
+              }
+            </div>
+          </div>
+        </SelectContent>
+      </Select>
+    }
   }),
   columnHelper.accessor("dueDate", {
     header: "Due date",
     enableHiding: false,
+    cell: ({ row }) => (
+      <div className="px-2">
+        <Label className="truncate">{format(new Date(row.original.dueDate as string), 'HH:MM, MMM d, yyyy')}</Label>
+      </div>
+    )
   }),
   columnHelper.accessor("created", {
     header: "Created",
     enableHiding: false,
     cell: ({ row }) => (
-      <Label>{new Date(row.original.created).toLocaleString()}</Label>
+      <div className="px-2">
+        <Label className="truncate">{format(new Date(row.original.created), 'MM/dd/yyyy')}</Label>
+      </div>
     )
   }),
 ])

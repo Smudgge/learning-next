@@ -15,16 +15,18 @@ import { Input } from "../ui/input";
 import { ButtonGroup } from "../ui/button-group";
 import { features } from "./table-features";
 import { columns } from "./table-columns";
+import { cn } from "@/lib/utils";
+import { keyof } from "zod/v4";
 
 const groups = [ 'Not grouped', 'Assignees', 'Status', 'Labels', 'Due date' ] as const
 type Group = (typeof groups)[number]
 
-function getGroupKeys(task: TaskExpandedJSON, group: Group): string[] {
+function extractGroupKeysFromTask(task: TaskExpandedJSON, group: Group): string[] {
   switch (group) {
     case "Status":
       return [task.status]
     case "Assignees":
-      return task.assignments.length
+      return task.assignments?.length
         ? task.assignments.map((a) => a.user?.name ?? "Unknown")
         : ["Unassigned"]
     case "Labels":
@@ -36,10 +38,24 @@ function getGroupKeys(task: TaskExpandedJSON, group: Group): string[] {
   }
 }
 
+function ColumnSize() {
+  return (
+    <colgroup>
+      <col style={{ width: "30%" }} /> {/** Name */}
+      <col style={{ width: "18%" }} /> {/** Asignees */}
+      <col style={{ width: "18%" }} /> {/** Status */}
+      <col style={{ width: "18%" }} /> {/** Labels */}
+      <col style={{ width: "18%" }} /> {/** Due date */}
+      <col style={{ width: "14%" }} /> {/** Created */}
+    </colgroup>
+  )
+}
+
 export default function TaskTable() {
   const [loading, setLoading] = useState<boolean>(true)
   const [tasks, setTasks] = useState<TaskExpandedJSON[]>([])
   const [group, setGroup] = useState<Group>('Not grouped')
+  const [pageSizeCache, setPageSizeCache] = useState<number>(10)
 
   const table = useTable({
     features,
@@ -61,12 +77,12 @@ export default function TaskTable() {
     const rows = table.getRowModel().rows
     const map = new Map<string, typeof rows>()
     for (const row of rows) {
-      for (const key of getGroupKeys(row.original, group)) {
+      for (const key of extractGroupKeysFromTask(row.original, group)) {
         if (!map.has(key)) map.set(key, [])
         map.get(key)!.push(row)
       }
     }
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b))
+    return map.entries()
   }, [tasks, group])
 
   if (loading) return <p>Loading...</p>
@@ -84,9 +100,15 @@ export default function TaskTable() {
       </div>
       {/** Group By */}
       <div>
+        <ButtonGroup>
         <Select
           value={group}
           onValueChange={(value) => {
+            if (value !== 'Not grouped') {
+              table.setPageSize(100)
+            } else {
+              table.setPageSize(pageSizeCache)
+            }
             setGroup(value as Group)
           }}
         >
@@ -95,17 +117,25 @@ export default function TaskTable() {
           </SelectTrigger>
           <SelectContent side="top">
             {groups.map((group) => (
-              <SelectItem value={group}>
+              <SelectItem key={group} value={group}>
                 {group}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        <Button variant="outline" onClick={() =>{
+          setGroup('Not grouped')
+          table.setPageSize(pageSizeCache)
+        }}>
+          Reset
+        </Button>
+        </ButtonGroup>
       </div>
     </div>
-    {/** Table */}
-    <div className="overflow-hidden rounded-lg border">
-      <Table>
+    {/** Table - Not Grouped */}
+    {group === 'Not grouped' && <div className="overflow-hidden rounded-lg border">
+      <Table className="table-fixed">
+        <ColumnSize />
         <TableHeader className="sticky top-0 z-10 bg-muted">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
@@ -121,9 +151,7 @@ export default function TaskTable() {
         </TableHeader>
         {/** Table Body */}
         <TableBody>
-          {/** Not Grouped */}
-          {group == 'Not grouped' && <>
-            {/** Rows exist. */}
+          {/** Rows exist. */}
             {table.getRowModel().rows?.length && (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
@@ -143,25 +171,46 @@ export default function TaskTable() {
                 </TableCell>
               </TableRow>
             )}
-          </>}
-          {/** Grouped */}
-          {group !== 'Not grouped' && (
-            groupedRows!.map(([key, rows]) => (
-              <TableRow key={key} className="bg-muted/50 hover:bg-muted cursor-pointer">
-                <TableCell colSpan={columns.length}>
-                  <div className="flex items-center gap-2">
-                    {key}
-                    <span className="text-xs text-muted-foreground">{rows.length}</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
         </TableBody>
       </Table>
-    </div>
+    </div>}
+    {/** Table - Grouped */}
+    {group !== 'Not grouped' && groupedRows!.map(([key, rows], groupIndex) => (
+      <div className="overflow-hidden rounded-lg border mb-8">
+        <Table className="table-fixed">
+          <ColumnSize />
+          {groupIndex === 0 &&
+            <TableHeader className="sticky top-0 z-10 bg-muted">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder ? null : (
+                        <FlexRender header={header} />
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+          }
+          {/** Table Body */}
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id} className="p-0">
+                    <FlexRender cell={cell} />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    ))}
     {/** Pagination */}
-    <div className="flex items-center justify-end gap-8 m-4">
+    {group === 'Not grouped' && <div className="flex items-center justify-end gap-8 m-4">
       {/** Rows per page */}
       <div className="hidden lg:flex items-center gap-2">
         <Label htmlFor="rows-per-page" className="text-sm font-medium">
@@ -171,6 +220,7 @@ export default function TaskTable() {
           value={`${table.state.pagination.pageSize}`}
           onValueChange={(value) => {
             table.setPageSize(Number(value))
+            setPageSizeCache(Number(value))
           }}
         >
           <SelectTrigger size="sm" className="w-20" id="rows-per-page">
@@ -232,7 +282,7 @@ export default function TaskTable() {
           <ChevronsRight />
         </Button>
       </div>
-    </div>
+    </div>}
     </>
   )
 }

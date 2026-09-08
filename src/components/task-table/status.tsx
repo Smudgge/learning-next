@@ -26,5 +26,5 @@ export default function TaskStatusComponent({ status }: { status: TaskStatus }) 
     )
   }
 
-  return <Label>Not Found</Label>
+  return <Label>No display implementation for {status}</Label>
 }

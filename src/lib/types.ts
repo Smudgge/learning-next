@@ -11,3 +11,15 @@ export type TaskExpandedJSON = Omit<TaskExpanded, "created" | "dueDate"> & {
   created: string
   dueDate: string | null
 }
+
+export type TaskAssignmentExpanded = Prisma.TaskAssignmentGetPayload<{
+  include: {
+    user: true
+  }
+}>
+
+export type TaskLabelExpanded = Prisma.TaskLabelGetPayload<{
+  include: {
+    label: true
+  }
+}>
