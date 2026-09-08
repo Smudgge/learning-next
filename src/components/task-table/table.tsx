@@ -116,7 +116,7 @@ export default function TaskTable() {
             {group === 'Not grouped' ? 'Group by' : group}
           </SelectTrigger>
           <SelectContent side="top">
-            {groups.map((group) => (
+            {groups.filter((group) => group !== 'Not grouped').map((group) => (
               <SelectItem key={group} value={group}>
                 {group}
               </SelectItem>
