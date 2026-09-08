@@ -1,5 +1,5 @@
 import { Label } from "../ui/label";
-import { Avatar, AvatarImage } from "../ui/avatar";
+import { Avatar, AvatarGroup, AvatarGroupCount, AvatarImage } from "../ui/avatar";
 import { TaskAssignmentExpanded } from "@/lib/types";
 
 export default function TaskAssignmentComponent({ assignments }: { assignments: TaskAssignmentExpanded[] }) {
@@ -20,5 +20,27 @@ export default function TaskAssignmentComponent({ assignments }: { assignments: 
       </Label>
     )
   }
-  return <div></div>
+  return (
+    <Label className="flex-1 font-bold" htmlFor={assignments[0].user.name || ''}>
+      <AvatarGroup>
+        <Avatar size="sm" className="flex items-center justify-center">
+          <AvatarImage
+            src="https://github.com/smudgge.png"
+            alt="@smudgge"
+            className="grayscale"
+          />
+        </Avatar>
+        <Avatar size="sm" className="flex items-center justify-center">
+          <AvatarImage
+            src="https://github.com/smudgge.png"
+            alt="@smudgge"
+            className="grayscale"
+          />
+        </Avatar>
+        {assignments.length > 2 &&
+          <AvatarGroupCount>+{assignments.length - 2}</AvatarGroupCount>
+        }
+      </AvatarGroup>
+    </Label>
+  )
 }

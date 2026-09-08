@@ -3,7 +3,7 @@ import { features } from "./table-features";
 import { TaskExpandedJSON } from "@/lib/types";
 import { Label } from "../ui/label";
 import { useEffect, useState } from "react";
-import { Label as LabelFromPrisma, TaskStatus, User } from "@/generated/prisma/client";
+import { Label as LabelFromPrisma, TaskLabel, TaskStatus, User } from "@/generated/prisma/client";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import TaskAssignmentComponent from "./assignment";
 import { SearchIcon } from "lucide-react";
@@ -15,6 +15,7 @@ import TaskStatusComponent from "./status";
 import TaskLabelComponent from "./label";
 import { format } from "date-fns";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const columnHelper = createColumnHelper<typeof features, TaskExpandedJSON>()
 
@@ -32,13 +33,14 @@ export const columns = columnHelper.columns([
     cell: ({ row }) => {
       const [search, setSearch] = useState<string>()
       const [users, setUsers] = useState<User[]>([])
+      const queryClient = useQueryClient()
 
       useEffect(() => {
         const params = new URLSearchParams()
         params.set("limit", '5')
         if (search) params.set("name", search)
 
-        fetch(`/api/users?${params.toString()}`)
+        fetch(`/api/user?${params.toString()}`)
           .then((res) => res.json())
           .then((data) => setUsers(data))
           .catch(() => {
@@ -46,92 +48,127 @@ export const columns = columnHelper.columns([
           })
       }, [search])
 
-      return <Select
-        value={`${row.original.assignments}`}
-        onValueChange={(value) => {
+      const { mutate: toggleUser } = useMutation({
+        mutationFn: (user: User) =>
+          fetch(`/api/task/assignment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ taskId: row.original.id, userId: user.id }),
+          }),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["tasks"] })
+        },
+      })
 
-        }}
-      >
-        <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-0">
-          <TaskAssignmentComponent assignments={row.original.assignments}/>
-        </SelectTrigger>
-        <SelectContent side="top" className="w-52">
-          <div>
-            {/** Title */}
-            <Label className="p-3 font-bold">Select assignees</Label>
-            {/* Search bar */}
-            <div className="px-2 pb-3">
-              <InputGroup>
-                <InputGroupInput
-                  id="inline-start-input" 
-                  placeholder="Search..." 
-                  onKeyDown={(e) => e.stopPropagation()}
-                  onChange={(e) => setSearch(e.target.value)} 
-                />
-                <InputGroupAddon align="inline-start">
-                  <SearchIcon className="text-muted-foreground" />
-                </InputGroupAddon>
-              </InputGroup>
+      return (
+        <Select
+          multiple
+          value={row.original.assignments}
+          onValueChange={(value) => {
+          }}
+        >
+          <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-0">
+            <TaskAssignmentComponent assignments={row.original.assignments}/>
+          </SelectTrigger>
+          <SelectContent side="top" className="w-52">
+            <div>
+              {/** Title */}
+              <Label className="p-3 font-bold">Select assignees</Label>
+              {/* Search bar */}
+              <div className="px-2 pb-3">
+                <InputGroup>
+                  <InputGroupInput
+                    id="inline-start-input" 
+                    placeholder="Search..." 
+                    onKeyDown={(e) => e.stopPropagation()}
+                    onChange={(e) => setSearch(e.target.value)} 
+                  />
+                  <InputGroupAddon align="inline-start">
+                    <SearchIcon className="text-muted-foreground" />
+                  </InputGroupAddon>
+                </InputGroup>
+              </div>
+              <Separator />
+              {/** Users */}
+              <div className="p-3 min-h-20">
+                {users.map((user) => {
+                  const isAssigned = row.original.assignments.find((a) => a.userId == user.id) != null
+                  return (
+                    <Toggle
+                      className="w-full flex items-center justify-start gap-2"
+                      pressed={isAssigned}
+                      onPressedChange={() => toggleUser(user)}
+                    >
+                      <Checkbox id={user.name || ''} checked={isAssigned} />
+                      <Label className="flex-1 font-bold" htmlFor={user.name || ''}>
+                        <Avatar size="sm" className="flex items-center justify-center">
+                          <AvatarImage
+                            src="https://github.com/smudgge.png"
+                            alt="@smudgge"
+                            className="grayscale"
+                          />
+                        </Avatar>
+                        {user.name}
+                      </Label>
+                    </Toggle>
+                  )
+                })}
+                {users.length == 0 &&
+                  <Label className="px-3 pb-3 font-bold">No Matches</Label>
+                }
+              </div>
             </div>
-            <Separator />
-            {/** Users */}
-            <div className="p-3 min-h-20">
-              {users.map((user) => (
-                <Toggle className="w-full flex items-center justify-start gap-2">
-                  <Checkbox id={user.name || ''}/>
-                  <Label className="flex-1 font-bold" htmlFor={user.name || ''}>
-                    <Avatar size="sm" className="flex items-center justify-center">
-                      <AvatarImage
-                        src="https://github.com/smudgge.png"
-                        alt="@smudgge"
-                        className="grayscale"
-                      />
-                    </Avatar>
-                    {user.name}
-                  </Label>
-                </Toggle>
-              ))}
-              {users.length == 0 &&
-                <Label className="px-3 pb-3 font-bold">No Matches</Label>
-              }
-            </div>
-          </div>
-        </SelectContent>
-      </Select>
+          </SelectContent>
+        </Select>
+      )
     }
   }),
   columnHelper.accessor("status", {
     header: "Status",
     enableHiding: false,
-    cell: ({ row }) => (
-      <Select
-        value={`${row.original.status}`}
-        onValueChange={(value) => {
+    cell: ({ row }) => {
+      const queryClient = useQueryClient()
 
-        }}
-      >
-        <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-0">
-          <TaskStatusComponent status={row.original.status}/>
-        </SelectTrigger>
-        <SelectContent side="top">
-          <div>
-            {/** Title */}
-            <Label className="p-3 font-bold">Set status</Label>
-            <Separator />
-            {/** Status's */}
-            <div className="p-3 min-h-20">
-              {["TODO", "IN_PROGRESS", "DONE"].map((status, index, arr) => (
-                <div key={status}>
-                  <SelectItem value={`${status}`}>
-                    <TaskStatusComponent status={status as TaskStatus} />
-                  </SelectItem>
-                </div>
-              ))}
+      const { mutate: setStatus } = useMutation({
+        mutationFn: (status: TaskStatus) =>
+          fetch(`/api/task/status`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ taskId: row.original.id, status }),
+          }),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["tasks"] })
+        },
+      })
+
+      return (
+        <Select
+          value={row.original.status}
+          onValueChange={(value) => setStatus(value as TaskStatus)}
+        >
+          <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-0">
+            <TaskStatusComponent status={row.original.status}/>
+          </SelectTrigger>
+          <SelectContent side="top">
+            <div>
+              {/** Title */}
+              <Label className="p-3 font-bold">Set status</Label>
+              <Separator />
+              {/** Status's */}
+              <div className="p-3 min-h-20">
+                {["TODO", "IN_PROGRESS", "DONE"].map((status, index, arr) => (
+                  <div key={status}>
+                    <SelectItem value={`${status}`}>
+                      <TaskStatusComponent status={status as TaskStatus} />
+                    </SelectItem>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </SelectContent>
-      </Select>
-    ),
+          </SelectContent>
+        </Select>
+      )
+    },
   }),
   columnHelper.accessor("labels", {
     header: "Labels",
@@ -139,13 +176,14 @@ export const columns = columnHelper.columns([
     cell: ({ row }) => {
       const [search, setSearch] = useState<string>()
       const [labels, setLabels] = useState<LabelFromPrisma[]>([])
+      const queryClient = useQueryClient()
 
       useEffect(() => {
         const params = new URLSearchParams()
         params.set("limit", '5')
         if (search) params.set("name", search)
 
-        fetch(`/api/labels?${params.toString()}`)
+        fetch(`/api/task/label?${params.toString()}`)
           .then((res) => res.json())
           .then((data) => setLabels(data))
           .catch(() => {
@@ -153,10 +191,22 @@ export const columns = columnHelper.columns([
           })
       }, [search])
 
-      return <Select
-        value={`${row.original.labels}`}
-        onValueChange={(value) => {
+      const { mutate: toggleLabel } = useMutation({
+        mutationFn: (label: LabelFromPrisma) =>
+          fetch(`/api/task/label`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ taskId: row.original.id, labelId: label.id }),
+          }),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["tasks"] })
+        },
+      })
 
+      return <Select
+        multiple
+        value={row.original.labels}
+        onValueChange={(value) => {
         }}
       >
         <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-0">
@@ -185,14 +235,21 @@ export const columns = columnHelper.columns([
             <Separator />
             {/** Labels */}
             <div className="p-3 min-h-20">
-              {labels.map((label) => (
-                <Toggle className="w-full flex items-center justify-start gap-2">
-                  <Checkbox id={label.name || ''}/>
-                  <Label className="flex-1" htmlFor={label.name || ''}>
-                    <TaskLabelComponent label={label} />
-                  </Label>
-                </Toggle>
-              ))}
+              {labels.map((label) => {
+                const isLabeled = row.original.labels.find((a) => a.labelId == label.id) != null
+                return (
+                  <Toggle 
+                    className="w-full flex items-center justify-start gap-2"
+                    onPressedChange={() => toggleLabel(label)}
+                    pressed={isLabeled}
+                  >
+                    <Checkbox id={label.name || ''} checked={isLabeled} />
+                    <Label className="flex-1" htmlFor={label.name || ''}>
+                      <TaskLabelComponent label={label} />
+                    </Label>
+                  </Toggle>
+                )
+              })}
               {labels.length == 0 &&
                 <Label className="px-3 pb-3 font-bold">No Matches</Label>
               }

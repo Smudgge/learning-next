@@ -17,6 +17,7 @@ import { columns } from "./table-columns";
 import { Combobox, ComboboxChip, ComboboxChips, ComboboxChipsInput, ComboboxContent, ComboboxList } from "../ui/combobox";
 import { Separator } from "../ui/separator";
 import TaskFilterComponent from "./filter";
+import { useQuery } from "@tanstack/react-query";
 
 function extractGroupKeysFromTask(task: TaskExpandedJSON, group: Group): string[] {
   switch (group) {
@@ -67,7 +68,6 @@ export type Filter = {
  */
 export default function TaskTable() {
   const [loading, setLoading] = useState<boolean>(true)
-  const [tasks, setTasks] = useState<TaskExpandedJSON[]>([])
   const [group, setGroup] = useState<Group>('Not grouped')
   const [filterSearchValue, setFilterSearchValue] = useState('')
   const [filters, setFilters] = useState<Filter[]>([])
@@ -76,24 +76,26 @@ export default function TaskTable() {
   // This is to remember what it was before, when switching back.
   const [pageSizeCache, setPageSizeCache] = useState<number>(10)
 
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["tasks", filters],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      for (const filter of filters) {
+        params.set(filter.type.toLocaleLowerCase(), filter.name)
+      }
+      return fetch(`/api/task?${params}`).then((res) => res.json())
+    },
+  })
+
+  useEffect(() => {
+    if (tasks) setLoading(false)
+  }, [tasks])
+
   const table = useTable({
     features,
     data: tasks,
     columns,
   })
-
-  useEffect(() => {
-    const params = new URLSearchParams()
-    for (const filter of filters) {
-      params.set(filter.type.toLocaleLowerCase(), filter.name)
-    }
-    fetch(`/api/tasks?${params}`)
-      .then(async (response) => {
-        const data = await response.json()
-        setTasks(data)
-        setLoading(false)
-      })
-  }, [filters])
 
   const groupedRows = useMemo(() => {
     if (group === "Not grouped") return null
