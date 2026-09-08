@@ -1,7 +1,7 @@
 "use client"
 
 import { TaskExpandedJSON } from "@/lib/types";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
 import { Label } from "../ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
@@ -19,10 +19,27 @@ import { columns } from "./table-columns";
 const groups = [ 'Not grouped', 'Assignees', 'Status', 'Labels', 'Due date' ] as const
 type Group = (typeof groups)[number]
 
+function getGroupKeys(task: TaskExpandedJSON, group: Group): string[] {
+  switch (group) {
+    case "Status":
+      return [task.status]
+    case "Assignees":
+      return task.assignments.length
+        ? task.assignments.map((a) => a.user?.name ?? "Unknown")
+        : ["Unassigned"]
+    case "Labels":
+      return task.labels.length ? task.labels.map(l => l.label.name) : ["No label"]
+    case "Due date":
+      return [task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No due date"]
+    default:
+      return ["__all__"]
+  }
+}
+
 export default function TaskTable() {
   const [loading, setLoading] = useState<boolean>(true)
   const [tasks, setTasks] = useState<TaskExpandedJSON[]>([])
-  const [grouped, setGrouped] = useState<Group>('Not grouped')
+  const [group, setGroup] = useState<Group>('Not grouped')
 
   const table = useTable({
     features,
@@ -38,6 +55,19 @@ export default function TaskTable() {
         setLoading(false)
       })
   }, [])
+
+  const groupedRows = useMemo(() => {
+    if (group === "Not grouped") return null
+    const rows = table.getRowModel().rows
+    const map = new Map<string, typeof rows>()
+    for (const row of rows) {
+      for (const key of getGroupKeys(row.original, group)) {
+        if (!map.has(key)) map.set(key, [])
+        map.get(key)!.push(row)
+      }
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b))
+  }, [tasks, group])
 
   if (loading) return <p>Loading...</p>
 
@@ -55,13 +85,13 @@ export default function TaskTable() {
       {/** Group By */}
       <div>
         <Select
-          value={`${grouped}`}
+          value={group}
           onValueChange={(value) => {
-            setGrouped(value as Group)
+            setGroup(value as Group)
           }}
         >
           <SelectTrigger>
-            {grouped === 'Not grouped' ? 'Group by' : grouped}
+            {group === 'Not grouped' ? 'Group by' : group}
           </SelectTrigger>
           <SelectContent side="top">
             {groups.map((group) => (
@@ -91,25 +121,41 @@ export default function TaskTable() {
         </TableHeader>
         {/** Table Body */}
         <TableBody>
-          {/** Rows exist. */}
-          {table.getRowModel().rows?.length && (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="p-0">
-                    <FlexRender cell={cell}/>
-                  </TableCell>
-                ))}
+          {/** Not Grouped */}
+          {group == 'Not grouped' && <>
+            {/** Rows exist. */}
+            {table.getRowModel().rows?.length && (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="p-0">
+                      <FlexRender cell={cell}/>
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
+            {/** No rows exist. */}
+            {!table.getRowModel().rows?.length && (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </>}
+          {/** Grouped */}
+          {group !== 'Not grouped' && (
+            groupedRows!.map(([key, rows]) => (
+              <TableRow key={key} className="bg-muted/50 hover:bg-muted cursor-pointer">
+                <TableCell colSpan={columns.length}>
+                  <div className="flex items-center gap-2">
+                    {key}
+                    <span className="text-xs text-muted-foreground">{rows.length}</span>
+                  </div>
+                </TableCell>
               </TableRow>
             ))
-          )}
-          {/** No rows exist. */}
-          {!table.getRowModel().rows?.length && (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
-              </TableCell>
-            </TableRow>
           )}
         </TableBody>
       </Table>
