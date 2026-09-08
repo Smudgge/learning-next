@@ -1,6 +1,6 @@
 import { TaskStatus } from "@/generated/prisma/client";
-import { Badge } from "./ui/badge";
-import { Label } from "./ui/label";
+import { Badge } from "../ui/badge";
+import { Label } from "../ui/label";
 
 export default function TaskStatusComponent({ status }: { status: TaskStatus }) {
 

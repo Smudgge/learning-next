@@ -1,5 +1,5 @@
 import { auth } from "@/auth"
-import Tasks from "@/components/Tasks";
+import Tasks from "@/components/task-table/table";
 
 export default async function Dashboard() {
   

@@ -1,5 +1,5 @@
 import { TaskAssignment } from "@/generated/prisma/client";
-import { Label } from "./ui/label";
+import { Label } from "../ui/label";
 
 export default function TaskAssignmentComponent({ assignments }: {assignments: TaskAssignment[]}) {
   if (!assignments || assignments.length == 0) {

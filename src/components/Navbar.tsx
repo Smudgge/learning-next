@@ -1,8 +1,8 @@
 import Link from "next/link"
 import { Button } from "./ui/button";
 import { HomeIcon, LayoutDashboard } from "lucide-react";
-import ThemeToggle from "./ThemeToggle";
-import LoginButton from "./LoginButton";
+import ThemeToggle from "./theme-toggle";
+import LoginButton from "./login-button";
 
 function Navbar() {
 
