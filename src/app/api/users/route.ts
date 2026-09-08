@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { z } from 'zod';
 
 const SearchSchema = z.object({
   limit: z.coerce.number().int().positive().optional().default(10),
@@ -24,9 +24,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const tasks = await prisma.task.findMany({
-    where: { name: { contains: result.data.name || '', mode: 'insensitive' }},
-    take: result.data.limit
+  const users = await prisma.user.findMany({
+    where: { name: { contains: result.data.name || '', mode: 'insensitive', }},
+    select: { id: true, name: true },
+    take: result.data.limit,
   })
-  return NextResponse.json(tasks)
+  return NextResponse.json(users)
 }

@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "./ui/select";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Circle, CircleCheck, Divide, Loader, Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from "lucide-react";
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -25,6 +25,9 @@ import { TaskStatus, User } from "@/generated/prisma/client";
 import TaskAssignmentComponent from "./TaskAssignmentComponent";
 import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
+import { Avatar, AvatarImage } from "./ui/avatar";
+import { Checkbox } from "./ui/checkbox";
+import { Toggle } from "./ui/toggle";
 
 const features = tableFeatures({
   columnFilteringFeature,  // Column filtering
@@ -50,7 +53,21 @@ const columns = columnHelper.columns([
     header: "Assignees",
     enableHiding: false,
     cell: ({ row }) => {
-      const [users, setUsers] = useState<User[]>([]) // For finding user to assign.
+      const [search, setSearch] = useState<string>()
+      const [users, setUsers] = useState<User[]>([])
+
+      useEffect(() => {
+        const params = new URLSearchParams()
+        if (search) params.set("name", search)
+
+        fetch(`/api/users?${params.toString()}`)
+          .then((res) => res.json())
+          .then((data) => setUsers(data))
+          .catch(() => {
+            setUsers([])
+          })
+      }, [search])
+
       return <Select
         value={`${row.original.assignments}`}
         onValueChange={(value) => {
@@ -69,15 +86,28 @@ const columns = columnHelper.columns([
               <Search className="pointer-events-none absolute left-[20px] top-[41px] translate-y-1 h-4 w-4 opacity-50" />
               <Input
                 placeholder="Search"
-                className="border-0 pl-8 focus-visible:border-2 focus-visible:border-blue-400 shadow-none focus-visible:ring-0 h-8"
+                className="border-2 pl-8 border-muted focus-visible:border-blue-400 shadow-none focus-visible:ring-0 h-8"
                 onKeyDown={(e) => e.stopPropagation()}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             <Separator />
             {/** Users */}
-            <div className="pt-3 min-h-20">
+            <div className="p-3 min-h-20">
               {users.map((user) => (
-                <div></div>
+                <Toggle className="w-full flex items-center justify-start gap-2">
+                  <Checkbox id={user.name || ''}/>
+                  <Label className="flex-1 font-bold" htmlFor={user.name || ''}>
+                    <Avatar size="sm" className="flex items-center justify-center">
+                      <AvatarImage
+                        src="https://github.com/smudgge.png"
+                        alt="@smudgge"
+                        className="grayscale"
+                      />
+                    </Avatar>
+                    {user.name}
+                  </Label>
+                </Toggle>
               ))}
               {users.length == 0 &&
                 <Label className="px-3 pb-3 font-bold">No Matches</Label>
