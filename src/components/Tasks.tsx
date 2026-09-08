@@ -58,6 +58,7 @@ const columns = columnHelper.columns([
 
       useEffect(() => {
         const params = new URLSearchParams()
+        params.set("limit", 5)
         if (search) params.set("name", search)
 
         fetch(`/api/users?${params.toString()}`)
