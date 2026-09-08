@@ -5,7 +5,10 @@ import { z } from "zod";
 
 const SearchSchema = z.object({
   limit: z.coerce.number().int().positive().optional().default(10),
-  name: z.string().optional()
+  name: z.string().optional(),
+  status: z.string().optional(),
+  assignees: z.string().optional(),
+  labels: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -24,14 +27,45 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const where = {} as any
+
+  // Filter task name
+  if (result.data.name) {
+    where['name'] = { contains: result.data.name, mode: 'insensitive' }
+  }
+
+  // Filter status
+  if (result.data.status) {
+    where['status'] = result.data.status
+  }
+
+  // Filter assignees
+  if (result.data.assignees) {
+    const names = result.data.assignees.split(',').map((n) => n.trim()).filter(Boolean)
+    if (names.length) {
+      where['assignments'] = {
+        some: { user: { name: { in: names } } }
+      }
+    }
+  }
+
+  // Filter labels
+  if (result.data.labels) {
+    const names = result.data.labels.split(',').map((n) => n.trim()).filter(Boolean)
+    if (names.length) {
+      where['labels'] = {
+        some: { label: { name: { in: names } } }
+      }
+    }
+  }
+
   const tasks = await prisma.task.findMany({
-    where: { name: { contains: result.data.name || '', mode: 'insensitive' }},
+    where,
     take: result.data.limit,
     include: {
       assignments: { include: { user: true } },
       labels: { include: { label: true } }
     }
   })
-  console.log(tasks)
   return NextResponse.json(tasks)
 }

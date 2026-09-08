@@ -11,15 +11,12 @@ import {
     FlexRender,
     useTable
 } from "@tanstack/react-table";
-import { Input } from "../ui/input";
 import { ButtonGroup } from "../ui/button-group";
 import { features } from "./table-features";
 import { columns } from "./table-columns";
-import { cn } from "@/lib/utils";
-import { keyof } from "zod/v4";
-
-const groups = [ 'Not grouped', 'Assignees', 'Status', 'Labels', 'Due date' ] as const
-type Group = (typeof groups)[number]
+import { Combobox, ComboboxChip, ComboboxChips, ComboboxChipsInput, ComboboxContent, ComboboxList } from "../ui/combobox";
+import { Separator } from "../ui/separator";
+import TaskFilterComponent from "./filter";
 
 function extractGroupKeysFromTask(task: TaskExpandedJSON, group: Group): string[] {
   switch (group) {
@@ -51,10 +48,32 @@ function ColumnSize() {
   )
 }
 
+const groups = [ 'Not grouped', 'Assignees', 'Status', 'Labels', 'Due date' ] as const
+type Group = (typeof groups)[number]
+
+const filterableGroups = [ 'Assignees', 'Status', 'Labels' ] as const
+type FilterableGroup = (typeof filterableGroups)[number]
+
+export type Filter = {
+  id: string
+  type: FilterableGroup | "Name"
+  name: string
+}
+
+/**
+ * Currently if you filter mutliple of the same type it will
+ * only apply one of them. For example if you filter by TODO and DONE
+ * it will only filter by DONE or TODO.
+ */
 export default function TaskTable() {
   const [loading, setLoading] = useState<boolean>(true)
   const [tasks, setTasks] = useState<TaskExpandedJSON[]>([])
   const [group, setGroup] = useState<Group>('Not grouped')
+  const [filterSearchValue, setFilterSearchValue] = useState('')
+  const [filters, setFilters] = useState<Filter[]>([])
+
+  // When using 'group by' it sets page size to 100.
+  // This is to remember what it was before, when switching back.
   const [pageSizeCache, setPageSizeCache] = useState<number>(10)
 
   const table = useTable({
@@ -64,18 +83,22 @@ export default function TaskTable() {
   })
 
   useEffect(() => {
-    fetch("/api/tasks")
+    const params = new URLSearchParams()
+    for (const filter of filters) {
+      params.set(filter.type.toLocaleLowerCase(), filter.name)
+    }
+    fetch(`/api/tasks?${params}`)
       .then(async (response) => {
         const data = await response.json()
         setTasks(data)
         setLoading(false)
       })
-  }, [])
+  }, [filters])
 
   const groupedRows = useMemo(() => {
     if (group === "Not grouped") return null
     const rows = table.getRowModel().rows
-    const map = new Map<string, typeof rows>()
+    const map = new Map<string, typeof rows>() // key: rows
     for (const row of rows) {
       for (const key of extractGroupKeysFromTask(row.original, group)) {
         if (!map.has(key)) map.set(key, [])
@@ -84,6 +107,54 @@ export default function TaskTable() {
     }
     return map.entries()
   }, [tasks, group])
+
+  const allFilterOptions = useMemo(() => {
+    const seen = new Map<string, Filter>() // filter_id: Filter
+    for (const task of tasks) {
+      for (const filterGroup of filterableGroups) {
+        for (const value of extractGroupKeysFromTask(task, filterGroup)) {
+          const id = `${filterGroup}:${value}`
+          if (!seen.has(id)) seen.set(id, { id, type: filterGroup, name: value })
+        }
+      }
+    }
+    // return Filter[]
+    return [...seen.values()]
+  }, [tasks])
+
+  const matchingFilterOptions = useMemo(() => {
+    const query = filterSearchValue.trim().toLowerCase()
+    const matches = allFilterOptions.filter((option) =>
+        (!query || option.name.toLowerCase().includes(query)) && // Matches query, or all if no query
+        !filters.some((filter) => filter.id === option.id) // Remove already selected filters
+    )
+    // return [{ type, items }, ...]
+    return filterableGroups
+      .map((type) => ({ type, items: matches.filter((match) => match.type === type) }))
+      .filter((g) => g.items && g.items.length > 0)
+  }, [filters, filterSearchValue, allFilterOptions])
+
+  const addFilterUsingInput = () => {
+    const value = filterSearchValue.trim()
+    if (!value) return
+
+    if (matchingFilterOptions.length > 0) {
+      const firstSuggestion = matchingFilterOptions[0].items[0]
+      if (firstSuggestion.name.toLocaleLowerCase() == value.toLocaleLowerCase()) {
+        setFilters((prev) =>
+          [...prev, matchingFilterOptions[0].items[0]]
+        )
+        setFilterSearchValue('')
+        return
+      }
+    }
+    // Otherwise create name filter
+    const id = `Name:${value}`
+    setFilters((prev) =>
+      [...prev, { id, type: 'Name', name: value }]
+    )
+    setFilterSearchValue('')
+  }
 
   if (loading) return <p>Loading...</p>
 
@@ -94,8 +165,47 @@ export default function TaskTable() {
       {/** Filter */}
       <div>
         <ButtonGroup>
-          <Input id="input-button-group" placeholder="Filter" />
-          <Button variant="outline">Add</Button>
+          <Combobox
+            multiple
+            value={filters}
+            onValueChange={(newFilters: Filter[]) => setFilters(newFilters)}
+            inputValue={filterSearchValue}
+            onInputValueChange={setFilterSearchValue}
+            itemToStringLabel={(item: Filter) => item.name}
+          >
+            <ComboboxChips>
+              {filters && filters.map((filter) => (
+                <ComboboxChip key={filter.id}>{filter.name}</ComboboxChip>
+              ))}
+              <ComboboxChipsInput 
+                placeholder="Filter by name, status, assignee, label..."
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                  if (e.key === 'Enter' && filterSearchValue.trim()) {
+                    e.preventDefault()
+                    addFilterUsingInput()
+                  }
+                }} 
+              />
+            </ComboboxChips>
+            <ComboboxContent>
+              <ComboboxList>
+                {matchingFilterOptions.length >= 0 && matchingFilterOptions.map((group, i) => (
+                  <div key={group.type} className="py-1">
+                    {i > 0 && <Separator />}
+                    <Label className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                      {group.type}
+                    </Label>
+                    {group.items.map((filter) => (
+                      <div className="px-3" key={filter.id}>
+                        <TaskFilterComponent filter={filter} />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
+          <Button variant="outline">Search</Button>
         </ButtonGroup>
       </div>
       {/** Group By */}

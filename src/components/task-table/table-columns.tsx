@@ -6,8 +6,7 @@ import { useEffect, useState } from "react";
 import { Label as LabelFromPrisma, TaskStatus, User } from "@/generated/prisma/client";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import TaskAssignmentComponent from "./assignment";
-import { Search } from "lucide-react";
-import { Input } from "../ui/input";
+import { SearchIcon } from "lucide-react";
 import { Separator } from "../ui/separator";
 import { Toggle } from "../ui/toggle";
 import { Checkbox } from "../ui/checkbox";
@@ -15,6 +14,7 @@ import { Avatar, AvatarImage } from "../ui/avatar";
 import TaskStatusComponent from "./status";
 import TaskLabelComponent from "./label";
 import { format } from "date-fns";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
 
 const columnHelper = createColumnHelper<typeof features, TaskExpandedJSON>()
 
@@ -61,13 +61,17 @@ export const columns = columnHelper.columns([
             <Label className="p-3 font-bold">Select assignees</Label>
             {/* Search bar */}
             <div className="px-2 pb-3">
-              <Search className="pointer-events-none absolute left-[20px] top-[41px] translate-y-1 h-4 w-4 opacity-50" />
-              <Input
-                placeholder="Search"
-                className="border-2 pl-8 border-muted focus-visible:border-blue-400 shadow-none focus-visible:ring-0 h-8"
-                onKeyDown={(e) => e.stopPropagation()}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              <InputGroup>
+                <InputGroupInput
+                  id="inline-start-input" 
+                  placeholder="Search..." 
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onChange={(e) => setSearch(e.target.value)} 
+                />
+                <InputGroupAddon align="inline-start">
+                  <SearchIcon className="text-muted-foreground" />
+                </InputGroupAddon>
+              </InputGroup>
             </div>
             <Separator />
             {/** Users */}
@@ -166,13 +170,17 @@ export const columns = columnHelper.columns([
             <Label className="p-3 font-bold">Select labels</Label>
             {/* Search bar */}
             <div className="px-2 pb-3">
-              <Search className="pointer-events-none absolute left-[20px] top-[41px] translate-y-1 h-4 w-4 opacity-50" />
-              <Input
-                placeholder="Search"
-                className="border-2 pl-8 border-muted focus-visible:border-blue-400 shadow-none focus-visible:ring-0 h-8"
-                onKeyDown={(e) => e.stopPropagation()}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              <InputGroup>
+                <InputGroupInput
+                  id="inline-start-input" 
+                  placeholder="Search..." 
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onChange={(e) => setSearch(e.target.value)} 
+                />
+                <InputGroupAddon align="inline-start">
+                  <SearchIcon className="text-muted-foreground" />
+                </InputGroupAddon>
+              </InputGroup>
             </div>
             <Separator />
             {/** Labels */}
