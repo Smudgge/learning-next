@@ -28,6 +28,8 @@ import { Separator } from "./ui/separator";
 import { Avatar, AvatarImage } from "./ui/avatar";
 import { Checkbox } from "./ui/checkbox";
 import { Toggle } from "./ui/toggle";
+import { Field, FieldLabel } from "./ui/field";
+import { ButtonGroup } from "./ui/button-group";
 
 const features = tableFeatures({
   columnFilteringFeature,  // Column filtering
@@ -149,7 +151,7 @@ const columns = columnHelper.columns([
     enableHiding: false,
   }),
   columnHelper.accessor("dueDate", {
-    header: "Due Date",
+    header: "Due date",
     enableHiding: false,
   }),
   columnHelper.accessor("created", {
@@ -161,9 +163,13 @@ const columns = columnHelper.columns([
   }),
 ])
 
+const groups = [ 'Not grouped', 'Assignees', 'Status', 'Labels', 'Due date' ] as const
+type Group = (typeof groups)[number]
+
 export default function Tasks() {
   const [loading, setLoading] = useState<boolean>(true)
   const [tasks, setTasks] = useState<TaskExpandedJSON[]>([])
+  const [grouped, setGrouped] = useState<Group>('Not grouped')
 
   const table = useTable({
     features,
@@ -184,6 +190,36 @@ export default function Tasks() {
 
   return (
     <>
+    {/** Top Filtering and Grouping */}
+    <div className="flex items-center justify-start gap-8 my-4">
+      {/** Filter */}
+      <div>
+        <ButtonGroup>
+          <Input id="input-button-group" placeholder="Filter" />
+          <Button variant="outline">Add</Button>
+        </ButtonGroup>
+      </div>
+      {/** Group By */}
+      <div>
+        <Select
+          value={`${grouped}`}
+          onValueChange={(value) => {
+            setGrouped(value as Group)
+          }}
+        >
+          <SelectTrigger>
+            {grouped === 'Not grouped' ? 'Group by' : grouped}
+          </SelectTrigger>
+          <SelectContent side="top">
+            {groups.map((group) => (
+              <SelectItem value={group}>
+                {group}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
     {/** Table */}
     <div className="overflow-hidden rounded-lg border">
       <Table>
