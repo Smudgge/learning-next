@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Label as LabelFromPrisma, TaskLabel, TaskStatus, User } from "@/generated/prisma/client";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import TaskAssignmentComponent from "./assignment";
-import { SearchIcon } from "lucide-react";
+import { DotSquare, EllipsisVertical, SearchIcon } from "lucide-react";
 import { Separator } from "../ui/separator";
 import { Toggle } from "../ui/toggle";
 import { Checkbox } from "../ui/checkbox";
@@ -16,6 +16,8 @@ import TaskLabelComponent from "./label";
 import { format } from "date-fns";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { Button } from "../ui/button";
 
 const columnHelper = createColumnHelper<typeof features, TaskExpandedJSON>()
 
@@ -276,5 +278,41 @@ export const columns = columnHelper.columns([
         <Label className="truncate">{format(new Date(row.original.created), 'MM/dd/yyyy')}</Label>
       </div>
     )
+  }),
+  columnHelper.display({
+    id: "actions",
+    cell: ({ row }) => {
+      const queryClient = useQueryClient()
+
+      const { mutate: deleteTask } = useMutation({
+        mutationFn: (label: LabelFromPrisma) =>
+          fetch(`/api/task`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ taskId: row.original.id }),
+          }),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["tasks"] })
+        },
+      })
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <Button
+              variant="ghost"
+              className="flex size-8 text-muted-foreground"
+              size="icon"
+            >
+              <EllipsisVertical />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-32">
+            <DropdownMenuItem variant="destructive" onClick={deleteTask}>Delete</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
   }),
 ])

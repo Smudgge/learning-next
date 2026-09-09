@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-const SearchSchema = z.object({
+const GetSchema = z.object({
   limit: z.coerce.number().int().positive().optional().default(10),
   name: z.string().optional(),
   status: z.string().optional(),
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   const params = Object.fromEntries(request.nextUrl.searchParams);
-  const result = SearchSchema.safeParse(params);
+  const result = GetSchema.safeParse(params);
 
   if (!result.success) {
     return NextResponse.json(
@@ -68,4 +68,60 @@ export async function GET(request: NextRequest) {
     }
   })
   return NextResponse.json(tasks)
+}
+
+const PostSchema = z.object({
+  name: z.string().min(1)
+});
+
+export async function POST(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const body = await request.json().catch(() => null);
+  const result = PostSchema.safeParse(body);
+
+  if (!result.success) {
+    return NextResponse.json(
+      { error: "Invalid body", details: result.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const { name } = result.data;
+
+  await prisma.task.create({
+    data: { name }
+  });
+  return NextResponse.json({ assigned: true });
+}
+
+const DeleteSchema = z.object({
+  taskId: z.string(),
+});
+
+export async function DELETE(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const body = await request.json().catch(() => null);
+  const result = DeleteSchema.safeParse(body);
+
+  if (!result.success) {
+    return NextResponse.json(
+      { error: "Invalid body", details: result.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const { taskId } = result.data;
+
+  await prisma.task.delete({
+    where: { id: taskId }
+  });
+  return NextResponse.json({ assigned: true });
 }

@@ -18,6 +18,7 @@ import { Combobox, ComboboxChip, ComboboxChips, ComboboxChipsInput, ComboboxCont
 import { Separator } from "../ui/separator";
 import TaskFilterComponent from "./filter";
 import { useQuery } from "@tanstack/react-query";
+import CreateTaskButton from "./create-task-button";
 
 function extractGroupKeysFromTask(task: TaskExpandedJSON, group: Group): string[] {
   switch (group) {
@@ -45,6 +46,7 @@ function ColumnSize() {
       <col style={{ width: "18%" }} /> {/** Labels */}
       <col style={{ width: "18%" }} /> {/** Due date */}
       <col style={{ width: "14%" }} /> {/** Created */}
+      <col style={{ width: "5%" }} /> {/** Action */}
     </colgroup>
   )
 }
@@ -163,9 +165,9 @@ export default function TaskTable() {
   return (
     <>
     {/** Top Filtering and Grouping */}
-    <div className="flex items-center justify-start gap-8 my-4">
+    <div className="flex items-center justify-between gap-8 my-4">
       {/** Filter */}
-      <div>
+      <div className="flex items-center justify-start gap-8">
         <ButtonGroup>
           <Combobox
             multiple
@@ -209,39 +211,41 @@ export default function TaskTable() {
           </Combobox>
           <Button variant="outline">Search</Button>
         </ButtonGroup>
-      </div>
-      {/** Group By */}
-      <div>
+        {/** Group By */}
         <ButtonGroup>
-        <Select
-          value={group}
-          onValueChange={(value) => {
-            if (value !== 'Not grouped') {
-              table.setPageSize(100)
-            } else {
-              table.setPageSize(pageSizeCache)
-            }
-            setGroup(value as Group)
-          }}
-        >
-          <SelectTrigger>
-            {group === 'Not grouped' ? 'Group by' : group}
-          </SelectTrigger>
-          <SelectContent side="top">
-            {groups.filter((group) => group !== 'Not grouped').map((group) => (
-              <SelectItem key={group} value={group}>
-                {group}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="outline" onClick={() =>{
-          setGroup('Not grouped')
-          table.setPageSize(pageSizeCache)
-        }}>
-          Reset
-        </Button>
+          <Select
+            value={group}
+            onValueChange={(value) => {
+              if (value !== 'Not grouped') {
+                table.setPageSize(100)
+              } else {
+                table.setPageSize(pageSizeCache)
+              }
+              setGroup(value as Group)
+            }}
+          >
+            <SelectTrigger>
+              {group === 'Not grouped' ? 'Group by' : group}
+            </SelectTrigger>
+            <SelectContent side="top">
+              {groups.filter((group) => group !== 'Not grouped').map((group) => (
+                <SelectItem key={group} value={group}>
+                  {group}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={() =>{
+            setGroup('Not grouped')
+            table.setPageSize(pageSizeCache)
+          }}>
+            Reset
+          </Button>
         </ButtonGroup>
+      </div>
+      {/** Create Task */}
+      <div>
+        <CreateTaskButton />
       </div>
     </div>
     {/** Table - Not Grouped */}
@@ -287,40 +291,44 @@ export default function TaskTable() {
       </Table>
     </div>}
     {/** Table - Grouped */}
-    {group !== 'Not grouped' && groupedRows!.map(([key, rows], groupIndex) => (
-      <div className="overflow-hidden rounded-lg border mb-8">
-        <Table className="table-fixed">
-          <ColumnSize />
-          {groupIndex === 0 &&
-            <TableHeader className="sticky top-0 z-10 bg-muted">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder ? null : (
-                        <FlexRender header={header} />
-                      )}
-                    </TableHead>
+    {group !== 'Not grouped' && 
+      <div className="bg-gradient-to-r from-background via-muted/50 to-background">
+        {groupedRows!.map(([key, rows], groupIndex) => (
+          <div className="overflow-hidden rounded-lg border mb-8 bg-background">
+            <Table className="table-fixed">
+              <ColumnSize />
+              {groupIndex === 0 &&
+                <TableHeader className="sticky top-0 z-10 bg-muted">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id} colSpan={header.colSpan}>
+                          {header.isPlaceholder ? null : (
+                            <FlexRender header={header} />
+                          )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
                   ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-          }
-          {/** Table Body */}
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="p-0">
-                    <FlexRender cell={cell} />
-                  </TableCell>
+                </TableHeader>
+              }
+              {/** Table Body */}
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className="p-0">
+                        <FlexRender cell={cell} />
+                      </TableCell>
+                    ))}
+                  </TableRow>
                 ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+              </TableBody>
+            </Table>
+          </div>
+        ))}
       </div>
-    ))}
+    }
     {/** Pagination */}
     {group === 'Not grouped' && <div className="flex items-center justify-end gap-8 m-4">
       {/** Rows per page */}
